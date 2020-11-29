@@ -4,7 +4,7 @@ dnl Copyright (c) 2000 Dug Song <dugsong@monkey.org>
 dnl
 dnl $Id: configure.in,v 1.27 2000/12/20 16:31:21 dugsong Exp $
 
-AC_INIT(dsniff.c)
+AC_INIT(dnsspoof.c)
 
 AC_CONFIG_HEADER(config.h)
 
@@ -58,11 +58,6 @@ AC_CHECK_LIB(nsl, gethostbyname)
 dnl XXX - feh, everything except OpenBSD sux.
 AC_CHECK_LIB(resolv, dn_expand)
 AC_REPLACE_FUNCS(dirname strlcpy strlcat strsep)
-needmd5=no
-AC_CHECK_FUNCS(MD5Update, , [needmd5=yes])
-if test $needmd5 = yes; then
-   LIBOBJS="$LIBOBJS md5.o"
-fi
 neederr=no
 AC_CHECK_FUNCS(warnx, , [neederr=yes])
 if test $neederr = yes; then
@@ -84,81 +79,6 @@ dnl Checks for X11
 if test "x$no_x" = "x"; then
    WEBSPY="webspy"; AC_SUBST(WEBSPY)
 fi
-
-dnl Checks for Berkeley DB
-AC_MSG_CHECKING(for Berkeley DB with 1.85 compatibility)
-AC_ARG_WITH(db,
-[  --with-db=DIR           use Berkeley DB (with --enable-compat185) in DIR],
-[ case "$withval" in
-  yes|no)
-     AC_MSG_RESULT(no)
-     ;;
-  *)
-     AC_MSG_RESULT($withval)
-     if test -f $withval/build_unix/db_185.h -a \
-	     -f $withval/build_unix/libdb.a; then
-        owd=`pwd`
-        if cd $withval; then withval=`pwd`; cd $owd; fi
-	AC_DEFINE(HAVE_DB_185_H)
-	DBINC="-I$withval/build_unix"
-	DBLIB="-L$withval/build_unix -ldb"
-     elif test -f $withval/dist/db_185.h -a \
-	       -f $withval/dist/libdb.a; then
-        owd=`pwd`
-        if cd $withval; then withval=`pwd`; cd $owd; fi
-	AC_DEFINE(HAVE_DB_185_H)
-	DBINC="-I$withval/dist"
-	DBLIB="-L$withval/dist -ldb"
-     elif test -f $withval/include/db_185.h -a \
-	       -f $withval/lib/libdb.a; then
-	owd=`pwd`
-	if cd $withval; then withval=`pwd`; cd $owd; fi
-	AC_DEFINE(HAVE_DB_185_H)
-	DBINC="-I$withval/include"
-	DBLIB="-L$withval/lib -ldb"
-     else
-        AC_ERROR(db_185.h or libdb.a not found in $withval or not configured with --enable-compat185)
-     fi
-     ;;
-  esac ],
-[ for dir in ${prefix}/BerkeleyDB.3.1 ${prefix}/BerkeleyDB.3.0 \
-	     ${prefix}/BerkeleyDB ${prefix}/db ${prefix}; do
-    if test -f ${dir}/include/db_185.h; then
-       AC_DEFINE(HAVE_DB_185_H)
-       DBINC="-I${dir}/include"
-       DBLIB="-L${dir}/lib -ldb"
-       have_db=yes
-       break
-    elif test -f ${dir}/include/db.h; then
-       AC_DEFINE(HAVE_DB_H)
-       DBINC="-I${dir}/include"
-       DBLIB="-L${dir}/lib -ldb"
-       have_db=yes
-       break
-    fi
-  done
-  if test "x$have_db" = "x"; then
-     if test -f /usr/include/db2/db_185.h; then
-	AC_DEFINE(HAVE_DB_185_H)
-	DBINC="-I/usr/include/db2"
-	DBLIB="-ldb2"
-	have_db=yes
-     elif test -f /usr/include/db_185.h; then
-        AC_DEFINE(HAVE_DB_185_H)
-        DBLIB="-ldb"
-        have_db=yes
-     elif test -f /usr/include/db.h; then
-        AC_DEFINE(HAVE_DB_H)
-        have_db=yes
-     fi
-  fi
-  if test "x$have_db" = "x"; then
-        AC_ERROR(Berkeley DB with 1.85 compatibility not found)
-  fi
-  AC_MSG_RESULT(yes) ]
-)
-AC_SUBST(DBINC)
-AC_SUBST(DBLIB)
 
 dnl Checks for libpcap
 AC_MSG_CHECKING(for libpcap)
@@ -246,51 +166,6 @@ AC_ARG_WITH(libnet,
 )
 AC_SUBST(LNETINC)
 AC_SUBST(LNETLIB)
-
-dnl Checks for libnids
-AC_MSG_CHECKING(for libnids)
-AC_ARG_WITH(libnids,
-[  --with-libnids=DIR      use libnids in DIR],
-[ case "$withval" in
-  yes|no)
-     AC_MSG_RESULT(no)
-     ;;
-  *)
-     AC_MSG_RESULT($withval)
-     if test -f $withval/src/nids.h -a -f $withval/src/libnids.a; then
-        owd=`pwd`
-        if cd $withval; then withval=`pwd`; cd $owd; fi
-	NIDSINC="-I$withval/src"
-	NIDSLIB="-L$withval/src -lnids"
-     elif test -f $withval/include/nids.h -a -f $withval/lib/libnids.a; then
-	owd=`pwd`
-	if cd $withval; then withval=`pwd`; cd $owd; fi
-	NIDSINC="-I$withval/include"
-	NIDSLIB="-L$withval/lib -lnids"
-     else
-        AC_ERROR(nids.h or libnids.a not found in $withval)
-     fi
-     ;;
-  esac ],
-[ if test -f ${prefix}/include/nids.h; then
-     NIDSINC="-I${prefix}/include"
-     NIDSLIB="-L${prefix}/lib -lnids"
-  elif test -f /usr/include/nids.h; then
-     NIDSLIB="-lnids"
-  else
-     AC_MSG_RESULT(no)
-     AC_ERROR(libnids not found)
-  fi
-  AC_MSG_RESULT(yes) ]
-)
-save_cppflags="$CPPFLAGS"
-CPPFLAGS="$NIDSINC"
-AC_MSG_CHECKING(whether libnids version is good)
-AC_EGREP_HEADER(pcap_filter, nids.h, AC_MSG_RESULT(yes), 
-   [ AC_MSG_RESULT(no); AC_ERROR(libnids version 1.13 or greater required) ])
-CPPFLAGS="$save_cppflags"
-AC_SUBST(NIDSINC)
-AC_SUBST(NIDSLIB)
 
 dnl Checks for OpenSSL
 AC_MSG_CHECKING(for OpenSSL)
